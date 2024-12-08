@@ -37,6 +37,11 @@ def run_assfonts(input_file, force=False):
         print(stdout or stderr)
         if os.path.isfile(generated_output):
             os.remove(generated_output)
+        if os.path.isdir(extra_folder):
+            try:
+                shutil.rmtree(extra_folder)
+            except Exception:
+                pass
         exit(-1)
 
     # Check if the expected output file exists
