@@ -3,15 +3,11 @@ import subprocess
 
 input_folder = os.getcwd()
 
-# Create a backup folder in the current working directory
-backup_folder = os.path.join(input_folder, "backup")
-os.makedirs(backup_folder, exist_ok=True)
-
 # Traverse the input folder for .otf files
 for root, _, files in os.walk(input_folder):
     for file in files:
         if file.lower().endswith(".otf"):
-            otf_path = os.path.join(input_folder, file)
+            otf_path = os.path.join(root, file)
             ttf_path = os.path.splitext(otf_path)[0] + ".ttf"
 
             # Convert the OTF to TTF
