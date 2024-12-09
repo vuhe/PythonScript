@@ -16,7 +16,7 @@ def run_assfonts(input_file, force=False):
 
     title, _, lang_tag = match.groups()
     lang_suffix = f".{lang_tag}" if lang_tag else ""
-    output_file = f"{title}.assfonts{lang_suffix}.forced.ass"
+    output_file = f"{title}.assfonts{lang_suffix}.default.ass"
     extra_folder = f"{title}{lang_suffix}_subsetted"
 
     # Check if the output file already exists
