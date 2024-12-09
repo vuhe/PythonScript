@@ -8,6 +8,8 @@ import shutil
 def run_assfonts(input_file, force=False):
     # Extract base name and potential language tag
     base_name = os.path.basename(input_file)
+    if ".assfonts." in base_name:
+        return
     match = re.match(r'(.+?)(\.(\w+))?\.ass$', base_name)
 
     if not match:
@@ -21,7 +23,7 @@ def run_assfonts(input_file, force=False):
 
     # Check if the output file already exists
     if os.path.isfile(output_file) and not force:
-        print(f"Skipping: '{output_file}' already exists. Use -f or --force to overwrite.")
+        print(f"Skipping: '{title}' assfonts already exists. Use -f or --force to overwrite.")
         return
 
     # Run the `assfonts` command
@@ -32,7 +34,8 @@ def run_assfonts(input_file, force=False):
     generated_output = f"{title}{lang_suffix}.assfonts.ass"
 
     # Check for `[WARN]` in output
-    if "[WARN]" in stdout or "[WARN]" in stderr:
+    missing_hint = "[WARN] Missing the font"
+    if missing_hint in stdout or missing_hint in stderr:
         print(f"[WARN] encountered while processing '{input_file}'. Stopping.")
         print(stdout or stderr)
         if os.path.isfile(generated_output):
@@ -47,7 +50,7 @@ def run_assfonts(input_file, force=False):
     # Check if the expected output file exists
     if os.path.isfile(generated_output):
         os.rename(generated_output, output_file)
-        print(f"Successfully processed and renamed to: {output_file}")
+        print(f"Successfully processed: {title}")
     else:
         print(f"Error: Expected output file '{generated_output}' not found.")
 
@@ -55,7 +58,6 @@ def run_assfonts(input_file, force=False):
     if os.path.isdir(extra_folder):
         try:
             shutil.rmtree(extra_folder)
-            print(f"Deleted folder: {extra_folder}")
         except Exception as e:
             print(f"Error deleting folder '{extra_folder}': {e}")
 
