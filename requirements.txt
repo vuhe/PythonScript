@@ -2,6 +2,16 @@ appdirs==1.4.4
 cu2qu==1.6.7.post2
 fonttools==4.55.2
 fs==2.4.16
+inquirerpy==0.3.4
+markdown-it-py==3.0.0
+mdurl==0.1.2
 otf2ttf==0.2
+pfzy==0.3.4
 pillow==11.0.0
+pip-autoremove==0.10.0
+prompt_toolkit==3.0.48
+Pygments==2.18.0
+rich==13.9.4
 six==1.17.0
+typing_extensions==4.12.2
+wcwidth==0.2.13

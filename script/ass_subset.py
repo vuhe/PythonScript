@@ -1,74 +1,69 @@
-import argparse
 import os
-import re
 import subprocess
-import shutil
+
+from rich.console import Console
+
+console = Console()
 
 
-def run_assfonts(input_file, force=False):
-    # Extract base name and potential language tag
-    base_name = os.path.basename(input_file)
-    if ".assfonts." in base_name:
-        return
-    match = re.match(r'(.+?)(\.(\w+))?\.ass$', base_name)
+def otf_to_ttf(font_dir):
+    """转换 otf 字体到 ttf 字体，可能抛出异常"""
+    for root, _, files in os.walk(font_dir):
+        for file in files:
+            if file.lower().endswith(".otf"):
+                otf_path = os.path.join(root, file)
+                subprocess.run(["otf2ttf", otf_path], check=True)
+                console.print(f"[blue]covert {file} to ttf[/blue]")
+                os.remove(otf_path)
 
-    if not match:
-        print(f"Skipping: '{input_file}' is not a valid .ass file.")
-        return
 
-    title, _, lang_tag = match.groups()
-    lang_suffix = f".{lang_tag}" if lang_tag else ""
-    output_file = f"{title}.assfonts{lang_suffix}.default.ass"
-    extra_folder = f"{title}{lang_suffix}_subsetted"
-
-    # Check if the output file already exists
-    if os.path.isfile(output_file) and not force:
-        print(f"Skipping: '{title}' assfonts already exists. Use -f or --force to overwrite.")
-        return
-
-    # Run the `assfonts` command
-    command = ["assfonts", "-i", input_file]
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+def assfonts_process(cmd):
+    """执行 assfonts，输出含有 [Error] 判定为失败"""
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     stdout, stderr = process.communicate()
-
-    generated_output = f"{title}{lang_suffix}.assfonts.ass"
-
-    # Check for `[WARN]` in output
-    missing_hint = "[WARN] Missing the font"
-    if missing_hint in stdout or missing_hint in stderr:
-        print(f"[WARN] encountered while processing '{input_file}'. Stopping.")
-        print(stdout or stderr)
-        if os.path.isfile(generated_output):
-            os.remove(generated_output)
-        if os.path.isdir(extra_folder):
-            try:
-                shutil.rmtree(extra_folder)
-            except Exception:
-                pass
-        exit(-1)
-
-    # Check if the expected output file exists
-    if os.path.isfile(generated_output):
-        os.rename(generated_output, output_file)
-        print(f"Successfully processed: {title}")
-    else:
-        print(f"Error: Expected output file '{generated_output}' not found.")
-
-    # Check for and delete the extra folder
-    if os.path.isdir(extra_folder):
-        try:
-            shutil.rmtree(extra_folder)
-        except Exception as e:
-            print(f"Error deleting folder '{extra_folder}': {e}")
+    success = True
+    for log in stdout.splitlines():
+        if log.startswith("[WARN]"):
+            console.print(f"[yellow]{log.removeprefix('[WARN] ')}[/yellow]")
+            if "Missing the font" in log:
+                success = False
+        if log.startswith("[Error]"):
+            console.print(f"[red]{log.removeprefix('[Error] ')}[/red]")
+            success = False
+    for log in stderr.splitlines():
+        if log.startswith("[WARN]"):
+            console.print(f"[yellow]{log.removeprefix('[WARN] ')}[/yellow]")
+            if "Missing the font" in log:
+                success = False
+        if log.startswith("[Error]"):
+            console.print(f"[red]{log.removeprefix('[Error] ')}[/red]")
+            success = False
+    return success
 
 
-parser = argparse.ArgumentParser(description="Batch process ASS files in a folder with assfonts.")
-parser.add_argument("-f", "--force", action="store_true", help="Force processing even if the output file exists")
+def ass_subset(parse_font_ass, append_font_ass, ass_dir):
+    """执行 assfonts 子集化程序，返回生成的 ass 文件"""
+    subset_font_dir = os.path.join(ass_dir, "subset_font")
+    os.makedirs(subset_font_dir, exist_ok=True)
 
-args = parser.parse_args()
-input_folder = os.getcwd()
+    # 对 ass 进行字体子集化，出现警告和错误默认终止程序
+    input_ass = [os.path.join(ass_dir, it) for it in parse_font_ass]
+    subset_cmd = ["assfonts", "-o", subset_font_dir, "-s", "-i"] + input_ass
+    if not assfonts_process(subset_cmd):
+        return None
 
-for file in os.listdir(input_folder):
-    if file.lower().endswith(".ass"):
-        ass_path = os.path.join(input_folder, file)
-        run_assfonts(ass_path, args.force)
+    # 对生成的字体子集中的 otf 转换为 tff
+    try:
+        otf_to_ttf(subset_font_dir)
+    except Exception as e:
+        console.print(f"[red]oft 转换 tff 异常: {e}[/red]")
+        return None
+
+    # 将生成的子集化字体嵌入文件中
+    ass_file_name, _ = os.path.splitext(append_font_ass)
+    generated_output = f"{ass_file_name}.assfonts.ass"
+    append_cmd = ["assfonts", "-f", subset_font_dir, "-e", "-i", os.path.join(ass_dir, append_font_ass)]
+    if not assfonts_process(append_cmd):
+        return None
+
+    return os.path.join(ass_dir, generated_output)
