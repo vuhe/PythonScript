@@ -4,6 +4,8 @@ import io
 from PIL import Image
 import subprocess
 
+from tools import for_print_path
+
 
 def convert_jpeg_to_jxl(jpeg_data):
     """
@@ -80,7 +82,7 @@ def check_zip_file(zip_path):
 
 
 def process_zip_file(zip_path):
-    print(f"Updating: {zip_path}")
+    print(f"Updating: {for_print_path(os.getcwd(), zip_path)}")
     temp_zip_path = zip_path + ".tmp"
     changes_made = False
 
