@@ -14,10 +14,9 @@ def check_lossless_jxl(jxl_data):
             input=jxl_data,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
             check=True
         )
-        output = process.stdout
+        output = process.stderr.decode('utf-8', errors='replace')
         if "Warning: could not decode losslessly to JPEG." in output:
             return True  # 无损 JXL
         elif "Reconstructed to JPEG." in output:
