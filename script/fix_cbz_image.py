@@ -48,7 +48,7 @@ def convert_jxl_to_webp(jxl_data):
             img.save(webp_io, format="WEBP", quality=90)
             return webp_io.getvalue()
     except subprocess.CalledProcessError as e:
-        print(f"Error converting JPEG to JXL: {e.stderr.decode()}")
+        print(f"Error converting JPEG to WebP: {e.stderr.decode()}")
         return None
 
 
@@ -71,22 +71,18 @@ def convert_jpeg_to_jxl(jpeg_data):
         return None
 
 
-def convert_png_to_jxl(png_data):
+def convert_png_to_webp(img: Image):
     """
-    Convert PNG data to JXL using a subprocess for the cjxl command-line tool.
-    Returns the JXL binary data.
+    Convert PNG data to WebP using PIL.
+    Returns the WebP binary data.
     """
     try:
-        process = subprocess.run(
-            ["cjxl", "-", "-", "-d", "0"],
-            input=png_data,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        return process.stdout
+        # Save the image in WebP format with quality set to 90
+        webp_io = io.BytesIO()
+        img.save(webp_io, format="WEBP", quality=90)
+        return webp_io.getvalue()
     except subprocess.CalledProcessError as e:
-        print(f"Error converting PNG to JXL: {e.stderr.decode()}")
+        print(f"Error converting PNG to WebP: {e.stderr.decode()}")
         return None
 
 
@@ -162,11 +158,11 @@ def process_zip_file(zip_path):
                             new_filename = f"{os.path.splitext(item.filename)[0]}.{img.format.lower()}"
                             changes_made = True
 
-                        # Convert PNG to JXL
+                        # Convert PNG to WebP
                         if img.format == "PNG":
-                            jxl_data = convert_png_to_jxl(data)
+                            jxl_data = convert_png_to_webp(img)
                             if jxl_data:
-                                new_filename = f"{os.path.splitext(new_filename)[0]}.jxl"
+                                new_filename = f"{os.path.splitext(new_filename)[0]}.webp"
                                 new_zip.writestr(new_filename, jxl_data)
                                 changes_made = True
                                 continue
