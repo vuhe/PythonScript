@@ -7,6 +7,52 @@ import subprocess
 from tools import for_print_path
 
 
+def check_lossless_jxl(jxl_data):
+    try:
+        process = subprocess.run(
+            ["djxl", "-", "/dev/null", "--output_format=jpeg"],
+            input=jxl_data,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        output = process.stdout
+        if "Warning: could not decode losslessly to JPEG." in output:
+            return True  # 无损 JXL
+        elif "Reconstructed to JPEG." in output:
+            return False  # 转换自 JPEG
+        else:
+            return False  # 默认判断为有损 JPEG
+    except subprocess.CalledProcessError as e:
+        print(f"Error check lossless JXL: {e.stderr.decode()}")
+        return False
+
+
+def convert_jxl_to_webp(jxl_data):
+    """
+    Convert JXL data to WebP using a subprocess for the djxl command-line tool.
+    Returns the WebP binary data.
+    """
+    try:
+        process = subprocess.run(
+            ["djxl", "-", "-", "--output_format=png"],
+            input=jxl_data,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+        png_data = process.stdout
+        with Image.open(io.BytesIO(png_data)) as img:
+            # Save the image in WebP format with quality set to 90
+            webp_io = io.BytesIO()
+            img.save(webp_io, format="WEBP", quality=90)
+            return webp_io.getvalue()
+    except subprocess.CalledProcessError as e:
+        print(f"Error converting JPEG to JXL: {e.stderr.decode()}")
+        return None
+
+
 def convert_jpeg_to_jxl(jpeg_data):
     """
     Convert JPEG data to JXL using a subprocess for the cjxl command-line tool.
@@ -57,6 +103,11 @@ def check_zip_file(zip_path):
 
                 # Check if the file is an image
                 try:
+                    # lossless JXL to WebP
+                    if item.filename.endswith(".jxl") and check_lossless_jxl(data):
+                        changes_made = True
+                        break
+
                     img = Image.open(io.BytesIO(data))
                     img.verify()  # Verify image integrity
 
@@ -64,7 +115,7 @@ def check_zip_file(zip_path):
                     if not item.filename.endswith(f".{img.format.lower()}"):
                         changes_made = True
 
-                    # Convert PNG to JXL
+                    # Convert PNG to WebP
                     if img.format == "PNG":
                         changes_made = True
 
@@ -95,6 +146,15 @@ def process_zip_file(zip_path):
 
                     # Check if the file is an image
                     try:
+                        # lossless JXL to WebP
+                        if item.filename.endswith(".jxl") and check_lossless_jxl(data):
+                            webp_data = convert_jxl_to_webp(data)
+                            if webp_data:
+                                new_filename = f"{os.path.splitext(new_filename)[0]}.webp"
+                                new_zip.writestr(new_filename, webp_data)
+                                changes_made = True
+                                continue
+
                         img = Image.open(io.BytesIO(data))
                         img.verify()  # Verify image integrity
 
