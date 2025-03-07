@@ -190,7 +190,17 @@ def process_zip_file(zip_path):
         print(f"No changes made to: {zip_path}")
 
 
+from concurrent.futures import ThreadPoolExecutor
+
+
+def process_file(file_path):
+    if check_zip_file(file_path):
+        process_zip_file(file_path)
+
+
 for root, _, files in os.walk(os.getcwd()):
-    for file in files:
-        if file.endswith(".cbz") and check_zip_file(os.path.join(root, file)):
-            process_zip_file(os.path.join(root, file))
+    with ThreadPoolExecutor() as executor:
+        for file in files:
+            if file.endswith(".cbz"):
+                cbz_file_path = os.path.join(root, file)
+                executor.submit(process_file, cbz_file_path)
