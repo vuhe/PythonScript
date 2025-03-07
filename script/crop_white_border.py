@@ -1,29 +1,58 @@
 from PIL import Image
 import os
 import numpy as np
+import argparse
+from InquirerPy import inquirer
 
 
-def get_min_white_border(image_files):
+def get_min_white_border(image_files, mode):
     min_left, min_right = float('inf'), float('inf')
+    min_top, min_bottom = float('inf'), float('inf')
 
     for file in image_files:
         img = Image.open(file).convert("RGB")
         img_array = np.array(img)
-
-        # 计算每列的非白色像素（假设纯白为 255, 255, 255）
         non_white = np.any(img_array != [255, 255, 255], axis=-1)
-        cols = np.any(non_white, axis=0)
 
-        # 找到最左和最右的非白色列
-        left, right = np.argmax(cols), len(cols) - np.argmax(cols[::-1])
+        if mode == "horizontal":
+            # 计算水平方向的白边
+            cols = np.any(non_white, axis=0)
+            width = cols.size
 
-        min_left = min(min_left, left)
-        min_right = min(min_right, len(cols) - right)
+            if np.any(cols):
+                left = np.argmax(cols)  # 左边白边宽度
+                right = np.argmax(cols[::-1])  # 右边白边宽度
+            else:
+                left, right = width, width  # 全白图片
 
-    return min_left, min_right
+            min_left = min(min_left, left)
+            min_right = min(min_right, right)
+
+        elif mode == "vertical":
+            # 计算垂直方向的白边
+            rows = np.any(non_white, axis=1)
+            height = rows.size
+
+            if np.any(rows):
+                top = np.argmax(rows)  # 顶部白边宽度
+                bottom = np.argmax(rows[::-1])  # 底部白边宽度
+            else:
+                top, bottom = height, height  # 全白图片
+
+            min_top = min(min_top, top)
+            min_bottom = min(min_bottom, bottom)
+
+        else:
+            raise ValueError("Mode must be 'horizontal' or 'vertical'")
+
+    # 返回结果
+    if mode == "horizontal":
+        return min_left, min_right, 0, 0
+    elif mode == "vertical":
+        return 0, 0, min_top, min_bottom
 
 
-def crop_images(input_folder, output_folder):
+def crop_images(input_folder, output_folder, mode):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -34,19 +63,41 @@ def crop_images(input_folder, output_folder):
         print("未找到图片文件")
         return
 
-    min_left, min_right = get_min_white_border(image_files)
+    min_left, min_right, min_top, min_bottom = get_min_white_border(image_files, mode)
+    print(f"L {min_left}, R {min_right}, T {min_top}, B {min_bottom}")
+    min_left_right, min_top_bottom = 0, 0
+
+    if mode == "horizontal":
+        min_left_right = inquirer.number(
+            message="横向裁剪:",
+            float_allowed=True,
+            default=max(min_left, min_right)
+        ).execute()
+        min_left_right = float(min_left_right)
+    elif mode == "vertical":
+        min_top_bottom = inquirer.number(
+            message="纵向裁剪:",
+            float_allowed=True,
+            default=max(min_top, min_bottom)
+        ).execute()
+        min_top_bottom = float(min_top_bottom)
 
     for file in image_files:
         img = Image.open(file)
         width, height = img.size
-        cropped = img.crop((min_left, 0, width - min_right, height))
-        output_path = os.path.join(output_folder, os.path.basename(file))
-        cropped.save(output_path, "PNG")
+        cropped = img.crop((min_left_right, min_top_bottom, width - min_left_right, height - min_top_bottom))
+        output_path = os.path.join(output_folder, os.path.basename(file) + ".webp")
+        cropped.save(output_path, "WEBP", quality=90)
 
     print(f"所有图片已裁剪并保存到 {output_folder}")
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="裁剪图片的白边")
+    parser.add_argument("--mode", choices=["horizontal", "vertical"], required=True,
+                        help="选择裁剪方向: horizontal (左右) 或 vertical (上下)")
+    args = parser.parse_args()
+
     cwd = os.getcwd()  # 当前文件夹
     output = os.path.join(cwd, "output")
-    crop_images(cwd, output)
+    crop_images(cwd, output, args.mode)
