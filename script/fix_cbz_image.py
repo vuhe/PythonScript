@@ -100,9 +100,9 @@ def check_zip_file(zip_path):
                 # Check if the file is an image
                 try:
                     # lossless JXL to WebP
-                    if item.filename.endswith(".jxl") and check_lossless_jxl(data):
-                        changes_made = True
-                        break
+                    # if item.filename.endswith(".jxl") and check_lossless_jxl(data):
+                    #     changes_made = True
+                    #     break
 
                     img = Image.open(io.BytesIO(data))
                     img.verify()  # Verify image integrity
