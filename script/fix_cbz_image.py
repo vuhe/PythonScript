@@ -161,10 +161,10 @@ def process_zip_file(zip_path):
 
                         # Convert PNG to WebP
                         if img.format == "PNG":
-                            jxl_data = convert_png_to_webp(data)
-                            if jxl_data:
+                            webp_data = convert_png_to_webp(data)
+                            if webp_data:
                                 new_filename = f"{os.path.splitext(new_filename)[0]}.webp"
-                                new_zip.writestr(new_filename, jxl_data)
+                                new_zip.writestr(new_filename, webp_data)
                                 changes_made = True
                                 continue
 
