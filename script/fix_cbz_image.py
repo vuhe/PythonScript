@@ -71,16 +71,17 @@ def convert_jpeg_to_jxl(jpeg_data):
         return None
 
 
-def convert_png_to_webp(img: Image):
+def convert_png_to_webp(png_data):
     """
     Convert PNG data to WebP using PIL.
     Returns the WebP binary data.
     """
     try:
-        # Save the image in WebP format with quality set to 90
-        webp_io = io.BytesIO()
-        img.save(webp_io, format="WEBP", quality=90)
-        return webp_io.getvalue()
+        with Image.open(io.BytesIO(png_data)) as img:
+            # Save the image in WebP format with quality set to 90
+            webp_io = io.BytesIO()
+            img.save(webp_io, format="WEBP", quality=90)
+            return webp_io.getvalue()
     except subprocess.CalledProcessError as e:
         print(f"Error converting PNG to WebP: {e.stderr.decode()}")
         return None
@@ -160,7 +161,7 @@ def process_zip_file(zip_path):
 
                         # Convert PNG to WebP
                         if img.format == "PNG":
-                            jxl_data = convert_png_to_webp(img)
+                            jxl_data = convert_png_to_webp(data)
                             if jxl_data:
                                 new_filename = f"{os.path.splitext(new_filename)[0]}.webp"
                                 new_zip.writestr(new_filename, jxl_data)
